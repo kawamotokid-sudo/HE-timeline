@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Horizon Europe Calls 2026–2027</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; background: #f7f7f5; color: #1a1a18; font-size: 14px; }
+
+  header { background: #fff; border-bottom: 1px solid #e2e0d8; padding: 20px 28px 16px; }
+  header h1 { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
+  header p { font-size: 12px; color: #6b6a65; }
+
+  .toolbar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; padding: 14px 28px; background: #fff; border-bottom: 1px solid #e2e0d8; }
+  .toolbar label { font-size: 12px; color: #6b6a65; }
+  select { font-size: 12px; padding: 5px 10px; border-radius: 7px; border: 1px solid #ccc; background: #fff; color: #1a1a18; cursor: pointer; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 10px; padding: 12px 28px; background: #f7f7f5; border-bottom: 1px solid #e2e0d8; }
+  .leg { display: flex; align-items: center; gap: 5px; font-size: 11px; color: #555; }
+  .leg-dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+
+  .gantt-wrap { overflow-x: auto; padding: 0 0 40px; }
+
+  table { border-collapse: collapse; width: 100%; min-width: 760px; }
+
+  thead th { font-size: 11px; font-weight: 500; color: #888; padding: 5px 3px; text-align: center; background: #fff; border-bottom: 1px solid #e2e0d8; position: sticky; top: 0; z-index: 4; white-space: nowrap; }
+  thead th.year-th { font-size: 13px; font-weight: 600; color: #1a1a18; background: #fff; border-bottom: 1px solid #e2e0d8; }
+  th.label-col { text-align: left; padding: 6px 14px; min-width: 230px; max-width: 230px; width: 230px; position: sticky; left: 0; z-index: 5; background: #fff; }
+
+  tbody td.label-col { text-align: left; padding: 5px 14px; font-size: 11px; min-width: 230px; max-width: 230px; width: 230px; position: sticky; left: 0; z-index: 2; background: #fff; border-bottom: 1px solid #f0ede6; line-height: 1.4; }
+  td.label-col .name { font-weight: 500; color: #1a1a18; }
+  td.label-col .sub { font-size: 10px; color: #888; margin-top: 1px; }
+
+  td.cell { padding: 4px 2px; border-bottom: 1px solid #f0ede6; min-width: 28px; width: 28px; vertical-align: middle; }
+
+  tr.group-row td { background: #f0ede6; font-size: 10px; font-weight: 600; color: #666; padding: 4px 14px; letter-spacing: .06em; text-transform: uppercase; border-bottom: 1px solid #e2e0d8; position: sticky; left: 0; }
+
+  .bar { height: 15px; border-radius: 3px; width: 100%; display: block; }
+
+  .today-col { background: rgba(220, 80, 50, 0.06); }
+
+  .year-sep { border-left: 2px solid #d0cdc4 !important; }
+  .month-sep { border-left: 1px solid #ede9e0; }
+
+  #tooltip {
+    position: fixed; display: none;
+    background: #fff; border: 1px solid #d5d2c8; border-radius: 8px;
+    padding: 8px 12px; font-size: 11px; color: #1a1a18;
+    pointer-events: none; z-index: 999; max-width: 240px; line-height: 1.6;
+    box-shadow: 0 4px 16px rgba(0,0,0,.10);
+  }
+  #tooltip strong { display: block; font-size: 12px; margin-bottom: 2px; }
+
+  footer { text-align: center; font-size: 11px; color: #aaa; padding: 20px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Horizon Europe — Call Timeline 2026–2027</h1>
+  <p>Opening and closing dates for calls across all clusters and programmes. Hover over any bar for details. Red column = today (Apr 2026).</p>
+</header>
+
+<div class="toolbar">
+  <label>Filter by programme:</label>
+  <select id="filterSel" onchange="render()">
+    <option value="all">All programmes</option>
+    <option value="cl1">Cluster 1 – Health</option>
+    <option value="cl2">Cluster 2 – Culture &amp; Society</option>
+    <option value="cl3">Cluster 3 – Civil Security for Society</option>
+    <option value="cl4">Cluster 4 – Digital, Industry &amp; Space</option>
+    <option value="cl5">Cluster 5 – Climate, Energy &amp; Mobility</option>
+    <option value="cl6">Cluster 6 – Food, Bioeconomy &amp; Environment</option>
+    <option value="missions">EU Missions</option>
+    <option value="cross">Cross-cutting (EIC / ERC / MSCA / WIDERA)</option>
+  </select>
+</div>
+
+<div class="legend" id="leg"></div>
+
+<div class="gantt-wrap">
+  <table id="gtable"></table>
+</div>
+
+<footer>
+  Source: Horizon Europe Work Programme 2026–2027 (adopted Dec 2025). Always verify dates on the <a href="https://ec.europa.eu/info/funding-tenders/opportunities/portal" target="_blank">EU Funding &amp; Tenders Portal</a>.
+</footer>
+
+<div id="tooltip"></div>
+
+<script>
+const COLORS = {
+  cl1: '#1D9E75', cl2: '#7F77DD', cl3: '#D85A30', cl4: '#378ADD',
+  cl5: '#BA7517', cl6: '#639922', missions: '#D4537E', cross: '#888780'
+};
+const LABELS = {
+  cl1: 'Cluster 1 – Health',
+  cl2: 'Cluster 2 – Culture &amp; Inclusive Society',
+  cl3: 'Cluster 3 – Civil Security for Society',
+  cl4: 'Cluster 4 – Digital, Industry &amp; Space',
+  cl5: 'Cluster 5 – Climate, Energy &amp; Mobility',
+  cl6: 'Cluster 6 – Food, Bioeconomy &amp; Environment',
+  missions: 'EU Missions',
+  cross: 'Cross-cutting (EIC / ERC / MSCA / WIDERA)'
+};
+
+// Month index: 0 = Jan 2026, 23 = Dec 2027
+function m(y, mo) { return (y - 2026) * 12 + (mo - 1); }
+
+const TODAY_IDX = 3; // April 2026
+
+const CALLS = [
+  // Cluster 1 – Health
+  { g: 'cl1', name: 'HLTH-2025-02 (stage 2)', sub: 'Health – two-stage, stage 2', open: m(2026,1), close: m(2026,4), info: 'Stage 2 deadline: 16 Apr 2026' },
+  { g: 'cl1', name: 'HLTH-2026-01', sub: 'Health – single stage (set 1)', open: m(2026,2), close: m(2026,4), info: 'Opens Feb 2026 · Closes 16 Apr 2026' },
+  { g: 'cl1', name: 'HLTH-2026-02', sub: 'Health – single stage (set 2)', open: m(2026,2), close: m(2026,9), info: 'Opens Feb 2026 · Closes Sep 2026' },
+  { g: 'cl1', name: 'HLTH-2026-03 (IND)', sub: 'Health – industry partnerships', open: m(2026,2), close: m(2026,9), info: 'Opens Feb 2026 · Closes Sep 2026 (industry/regulatory science)' },
+  { g: 'cl1', name: 'HLTH-2027-01', sub: 'Health – single stage (set 1)', open: m(2027,2), close: m(2027,4), info: 'Opens 10 Feb 2027 · Closes 13 Apr 2027' },
+  { g: 'cl1', name: 'HLTH-2027-02', sub: 'Health – single stage (set 2)', open: m(2027,2), close: m(2027,9), info: 'Opens 10 Feb 2027 · Closes 21 Sep 2027' },
+  { g: 'cl1', name: 'HLTH-2027-03', sub: 'Health – tools & technologies', open: m(2027,2), close: m(2027,9), info: 'Opens Feb 2027 · Closes Sep 2027 (incl. AGI for healthcare)' },
+
+  // Cluster 2 – Culture
+  { g: 'cl2', name: 'CL2-2026-01', sub: 'Culture – single stage', open: m(2026,5), close: m(2026,9), info: 'Opens 12 May 2026 · Closes 23 Sep 2026' },
+  { g: 'cl2', name: 'CL2-2026-02', sub: 'Culture – partnerships', open: m(2026,5), close: m(2026,10), info: 'Opens 12 May 2026 · Closes 13 Oct 2026' },
+  { g: 'cl2', name: 'CL2-2027-01', sub: 'Culture – single stage', open: m(2027,5), close: m(2027,9), info: 'Opens 13 May 2027 · Closes 23 Sep 2027' },
+  { g: 'cl2', name: 'CL2-2027-02 (stage 1)', sub: 'Culture – two-stage, stage 1', open: m(2027,3), close: m(2027,5), info: 'Opens 2 Mar 2027 · Stage 1 closes 4 May 2027' },
+  { g: 'cl2', name: 'CL2-2027-02 (stage 2)', sub: 'Culture – two-stage, stage 2', open: m(2027,5), close: m(2027,9), info: 'Stage 2 opens May 2027 · Closes 30 Sep 2027' },
+
+  // Cluster 3 – Civil Security for Society
+  { g: 'cl3', name: 'CL3-2026-01 (Cybersecurity)', sub: 'Cybersecurity – single stage', open: m(2026,3), close: m(2026,9), info: 'Opens 3 Mar 2026 · Closes 15 Sep 2026 (cryptography, AI security, software security)' },
+  { g: 'cl3', name: 'CL3-2026-01 (FCT/BM/INFRA/DRS/SSRI)', sub: 'Civil security – main call', open: m(2026,5), close: m(2026,11), info: 'Opens 5 May 2026 · Closes 4 Nov 2026 (fighting crime, border mgmt, infrastructure, disaster resilience)' },
+  { g: 'cl3', name: 'CL3-2026-01 (CS)', sub: 'Civil security – CS sub-call', open: m(2026,5), close: m(2026,9), info: 'Opens May 2026 · Closes 15 Sep 2026 (civil society / preparedness topics)' },
+  { g: 'cl3', name: 'CL3-2027-01', sub: 'Civil security – 2027 call', open: m(2027,5), close: m(2027,11), info: 'Opens May 2027 · Closes Nov 2027 (crime, border mgmt, infrastructure, online harms, synthetic drugs)' },
+
+  // Cluster 4 – Digital, Industry & Space
+  { g: 'cl4', name: 'CL4-2026-01', sub: 'Industry – single stage (€319M, 15 topics)', open: m(2026,1), close: m(2026,10), info: 'Opens Jan 2026 · Closes Oct 2026 · €319M' },
+  { g: 'cl4', name: 'CL4-2026-02 (stage 1)', sub: 'Industry – two-stage, stage 1', open: m(2026,1), close: m(2026,3), info: 'Stage 1 opens Jan 2026 · Stage 1 closes 17 Mar 2026 (€98M)' },
+  { g: 'cl4', name: 'CL4-2026-02 (stage 2)', sub: 'Industry – two-stage, stage 2', open: m(2026,3), close: m(2026,10), info: 'Stage 2 opens Mar 2026 · Closes 13 Oct 2026' },
+  { g: 'cl4', name: 'CL4-2026-04 (DATA)', sub: 'Digital / Data – single stage', open: m(2026,4), close: m(2026,9), info: 'Opens Apr 2026 · Closes Sep 2026 (Open Internet Stack, AI)' },
+  { g: 'cl4', name: 'CL4-2026-05 (DIGITAL)', sub: 'Next-gen AI agents', open: m(2026,5), close: m(2026,10), info: 'Opens May 2026 · Closes Oct 2026 (RAISE / AI Data & Robotics)' },
+  { g: 'cl4', name: 'CL4-2027-01', sub: 'Industry – single stage', open: m(2027,1), close: m(2027,9), info: 'Opens Jan 2027 · Closes Sep 2027' },
+  { g: 'cl4', name: 'CL4-2027-02 (stage 1)', sub: 'Industry – two-stage, stage 1', open: m(2026,9), close: m(2027,2), info: 'Opens Sep 2026 · Stage 1 closes Feb 2027' },
+  { g: 'cl4', name: 'CL4-2027-02 (stage 2)', sub: 'Industry – two-stage, stage 2', open: m(2027,2), close: m(2027,9), info: 'Stage 2 opens Feb 2027 · Closes Sep 2027' },
+  { g: 'cl4', name: 'CL4-2027-04 (DATA)', sub: 'Digital / Data – single stage', open: m(2027,4), close: m(2027,9), info: 'Opens Apr 2027 · Closes Sep 2027 (federated AI, data centres)' },
+  { g: 'cl4', name: 'RAISE-2026-01', sub: 'RAISE – AI in Science', open: m(2026,1), close: m(2026,9), info: 'Opens Jan 2026 · Closes Sep 2026 · €27.8M (2 topics)' },
+
+  // Cluster 5 – Climate, Energy & Mobility
+  { g: 'cl5', name: 'CL5-2026-01 (D1)', sub: 'Climate science – single stage', open: m(2026,1), close: m(2026,3), info: 'Opens Jan 2026 · Closes Mar 2026 (climate sciences)' },
+  { g: 'cl5', name: 'CL5-2026-03 (D2)', sub: 'Batteries – direct recycling', open: m(2026,3), close: m(2026,9), info: 'Opens Mar 2026 · Closes Sep 2026 (BATT4EU partnership)' },
+  { g: 'cl5', name: 'CL5-2026-08 (stage 1)', sub: 'Climate two-stage – stage 1', open: m(2026,8), close: m(2027,2), info: 'Opens Aug 2026 · Stage 1 closes Feb 2027 (Earth system science)' },
+  { g: 'cl5', name: 'CL5-2026-08 (stage 2)', sub: 'Climate two-stage – stage 2', open: m(2027,2), close: m(2027,9), info: 'Stage 2 opens Feb 2027 · Closes Sep 2027' },
+  { g: 'cl5', name: 'CL5-2026-09 (D2)', sub: 'Battery materials – single stage', open: m(2026,9), close: m(2026,12), info: 'Opens Sep 2026 · Closes Dec 2026 (BATT4EU – electrode materials)' },
+  { g: 'cl5', name: 'CL5-2026-10 (D2)', sub: 'Next-gen Li batteries', open: m(2026,10), close: m(2026,12), info: 'Opens Oct 2026 · Closes Dec 2026 (BATT4EU + Made in Europe)' },
+  { g: 'cl5', name: 'CL5-2027-01 (D1)', sub: 'Climate – single stage (set 1)', open: m(2027,2), close: m(2027,9), info: 'Opens Feb 2027 · Closes Sep 2027 (extreme events, palaeoclimate…)' },
+  { g: 'cl5', name: 'CL5-2027-02 (D2)', sub: 'Batteries – recycling & production', open: m(2027,2), close: m(2027,9), info: 'Opens Feb 2027 · Closes Sep 2027 (BATT4EU)' },
+  { g: 'cl5', name: 'CL5-2027-04 (stage 1)', sub: 'Next-gen batteries – two-stage s1', open: m(2027,4), close: m(2027,12), info: 'Opens Apr 2027 · Stage 1 closes Dec 2027 (BATT4EU + IAM4EU)' },
+  { g: 'cl5', name: 'CL5-2027-05 (D2)', sub: 'Long-duration energy storage', open: m(2027,5), close: m(2027,12), info: 'Opens May 2027 · Closes Dec 2027 (BATT4EU)' },
+  { g: 'cl5', name: 'CL5-2027-07 (D4)', sub: 'Buildings / data centre heat', open: m(2027,8), close: m(2027,12), info: 'Opens Aug 2027 · Closes Dec 2027 (thermal optimisation)' },
+
+  // Cluster 6 – Food, Bioeconomy
+  { g: 'cl6', name: 'CL6-2026-01', sub: 'Food & bioeconomy – single stage', open: m(2026,1), close: m(2026,9), info: 'Opens Jan 2026 · Closes 23 Sep 2026' },
+  { g: 'cl6', name: 'CL6-2026-02', sub: 'Food & bioeconomy – partnerships', open: m(2026,1), close: m(2026,10), info: 'Opens Jan 2026 · Closes Oct 2026' },
+  { g: 'cl6', name: 'CL6-2027-01', sub: 'Food & bioeconomy – single stage', open: m(2027,1), close: m(2027,9), info: 'Opens Jan 2027 · Closes 21 Sep 2027' },
+  { g: 'cl6', name: 'CL6-2027-02', sub: 'Food & bioeconomy – partnerships', open: m(2027,1), close: m(2027,10), info: 'Opens Jan 2027 · Closes Oct 2027' },
+
+  // EU Missions
+  { g: 'missions', name: 'MISS-Cancer-2026', sub: 'EU Cancer Mission (7 topics)', open: m(2026,1), close: m(2026,9), info: 'Opens Jan 2026 · Closes 15 Sep 2026 · 7 topics' },
+  { g: 'missions', name: 'MISS-ClimateAdapt-2026', sub: 'EU Climate Adaptation Mission', open: m(2026,2), close: m(2026,9), info: 'Opens Feb 2026 · Closes Sep 2026 · €226M' },
+  { g: 'missions', name: 'MISS-Oceans-2026', sub: 'EU Oceans & Waters Mission', open: m(2026,2), close: m(2026,9), info: 'Opens Feb 2026 · Closes 23 Sep 2026' },
+  { g: 'missions', name: 'MISS-Soil-2026', sub: 'EU Soil Health Mission', open: m(2026,2), close: m(2026,9), info: 'Opens Feb 2026 · Closes Sep 2026 · €246M' },
+  { g: 'missions', name: 'MISS-Cities-2026', sub: 'EU Cities Mission', open: m(2026,2), close: m(2026,9), info: 'Opens Feb 2026 · Closes Sep 2026 · €220M' },
+  { g: 'missions', name: 'MISS-Cancer-2027', sub: 'EU Cancer Mission', open: m(2027,2), close: m(2027,9), info: 'Opens 10 Feb 2027 · Closes 21 Sep 2027' },
+  { g: 'missions', name: 'MISS-ClimateAdapt-2027', sub: 'EU Climate Adaptation Mission', open: m(2027,2), close: m(2027,9), info: 'Opens Feb 2027 · Closes Sep 2027' },
+  { g: 'missions', name: 'MISS-Oceans-2027', sub: 'EU Oceans & Waters Mission', open: m(2027,2), close: m(2027,9), info: 'Opens Feb 2027 · Closes 21 Sep 2027' },
+  { g: 'missions', name: 'MISS-Soil-2027', sub: 'EU Soil Health Mission', open: m(2027,2), close: m(2027,9), info: 'Opens Feb 2027 · Closes Sep 2027' },
+  { g: 'missions', name: 'MISS-Cities-2027', sub: 'EU Cities Mission', open: m(2027,2), close: m(2027,9), info: 'Opens Feb 2027 · Closes Sep 2027' },
+
+  // Cross-cutting
+  { g: 'cross', name: 'WIDERA-ERA-2026', sub: 'Widening & ERA reform', open: m(2026,1), close: m(2026,3), info: 'Opens Jan 2026 · Closes 12 Mar 2026 (Widening + ERA policy)' },
+  { g: 'cross', name: 'Horizontal CID-2026-01', sub: 'Clean Industrial Deal (€540M)', open: m(2026,1), close: m(2026,9), info: 'Opens 18 Dec 2025 · Closes Sep 2026 · €540M (clean tech + decarbonisation)' },
+  { g: 'cross', name: 'EIC Accelerator-2026', sub: 'European Innovation Council', open: m(2026,1), close: m(2026,10), info: 'Opens Jan 2026 · Multiple cut-offs through Oct 2026 (deep-tech SMEs)' },
+  { g: 'cross', name: 'EIC Pathfinder-2026', sub: 'European Innovation Council', open: m(2026,1), close: m(2026,9), info: 'Opens Jan 2026 · Closes Sep 2026 (high-risk / breakthrough research)' },
+  { g: 'cross', name: 'ERC 2026 (StG/CoG/AdG)', sub: 'European Research Council', open: m(2026,1), close: m(2026,5), info: 'Various deadlines Jan–May 2026 (Starting, Consolidator, Advanced Grants)' },
+  { g: 'cross', name: 'MSCA-PF-2026', sub: 'MSCA Postdoctoral Fellowships', open: m(2026,3), close: m(2026,9), info: 'Opens Mar 2026 · Closes Sep 2026' },
+  { g: 'cross', name: 'MSCA Choose Europe', sub: 'Attract global research talent', open: m(2026,1), close: m(2026,9), info: 'Opens Jan 2026 · Closes Sep 2026 · €50M (long-term fellowships)' },
+  { g: 'cross', name: 'EIC Accelerator-2027', sub: 'European Innovation Council', open: m(2027,1), close: m(2027,9), info: 'Opens Jan 2027 · Multiple cut-offs through Sep 2027' },
+  { g: 'cross', name: 'EIC Pathfinder-2027', sub: 'European Innovation Council', open: m(2027,1), close: m(2027,9), info: 'Opens Jan 2027 · Closes Sep 2027' },
+  { g: 'cross', name: 'ERC 2027 (StG/CoG/AdG)', sub: 'European Research Council', open: m(2027,1), close: m(2027,5), info: 'Various deadlines Jan–May 2027' },
+  { g: 'cross', name: 'MSCA-PF-2027', sub: 'MSCA Postdoctoral Fellowships', open: m(2027,3), close: m(2027,9), info: 'Opens Mar 2027 · Closes Sep 2027' },
+  { g: 'cross', name: 'WIDERA-ERA-2027', sub: 'Widening & ERA reform', open: m(2027,1), close: m(2027,9), info: 'Opens Jan 2027 · Closes Sep 2027' },
+];
+
+const MONTHS = [];
+for (let y = 2026; y <= 2027; y++) {
+  for (let mo = 1; mo <= 12; mo++) {
+    MONTHS.push({ y, mo, idx: m(y, mo) });
+  }
+}
+
+const SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+function render() {
+  const filter = document.getElementById('filterSel').value;
+
+  // Legend
+  const legEl = document.getElementById('leg');
+  legEl.innerHTML = '';
+  Object.entries(LABELS).forEach(([k, v]) => {
+    if (filter !== 'all' && filter !== k) return;
+    legEl.innerHTML += `<span class="leg"><span class="leg-dot" style="background:${COLORS[k]}"></span>${v}</span>`;
+  });
+
+  const tab = document.getElementById('gtable');
+  let html = '<thead>';
+
+  // Year row
+  html += '<tr><th class="label-col">Call / Programme</th>';
+  html += `<th class="year-th year-sep" colspan="12" style="text-align:center">2026</th>`;
+  html += `<th class="year-th year-sep" colspan="12" style="text-align:center">2027</th>`;
+  html += '</tr>';
+
+  // Month row
+  html += '<tr><th class="label-col"></th>';
+  MONTHS.forEach(({ mo, idx }) => {
+    const isToday = idx === TODAY_IDX;
+    const cls = mo === 1 ? 'year-sep' : '';
+    html += `<th class="${cls}" style="${isToday ? 'color:#c0392b;font-weight:700' : ''}">${SHORT[mo-1]}</th>`;
+  });
+  html += '</tr></thead><tbody>';
+
+  let lastGroup = '';
+  CALLS.forEach(call => {
+    if (filter !== 'all' && filter !== call.g) return;
+    if (call.g !== lastGroup) {
+      html += `<tr class="group-row"><td colspan="${MONTHS.length + 1}">${LABELS[call.g] || call.g}</td></tr>`;
+      lastGroup = call.g;
+    }
+    html += `<tr><td class="label-col"><div class="name">${call.name}</div><div class="sub">${call.sub}</div></td>`;
+    MONTHS.forEach(({ mo, idx }) => {
+      const inBar = idx >= call.open && idx <= call.close;
+      const isStart = idx === call.open;
+      const isEnd = idx === call.close;
+      const isToday = idx === TODAY_IDX;
+      const cls = [
+        'cell',
+        mo === 1 ? 'year-sep' : 'month-sep',
+        isToday ? 'today-col' : ''
+      ].join(' ');
+      let inner = '';
+      if (inBar) {
+        const r = isStart && isEnd ? '3px' : isStart ? '3px 0 0 3px' : isEnd ? '0 3px 3px 0' : '0';
+        inner = `<span class="bar" style="background:${COLORS[call.g]};opacity:0.82;border-radius:${r}"></span>`;
+      }
+      html += `<td class="${cls}" data-info="${call.info}" data-name="${call.name}">${inner}</td>`;
+    });
+    html += '</tr>';
+  });
+  html += '</tbody>';
+  tab.innerHTML = html;
+
+  // Tooltip
+  const tip = document.getElementById('tooltip');
+  tab.querySelectorAll('td[data-info]').forEach(td => {
+    td.addEventListener('mouseenter', () => {
+      tip.innerHTML = `<strong>${td.dataset.name}</strong>${td.dataset.info}`;
+      tip.style.display = 'block';
+    });
+    td.addEventListener('mousemove', e => {
+      tip.style.left = (e.clientX + 14) + 'px';
+      tip.style.top  = (e.clientY - 40) + 'px';
+    });
+    td.addEventListener('mouseleave', () => { tip.style.display = 'none'; });
+  });
+}
+
+render();
+</script>
+</body>
+</html>
